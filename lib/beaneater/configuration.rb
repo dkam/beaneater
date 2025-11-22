@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Beaneater
   class Configuration
     attr_accessor :default_put_delay   # default delay value to put a job

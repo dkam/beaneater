@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # test/job_test.rb
 
 require File.expand_path('../test_helper', __FILE__)

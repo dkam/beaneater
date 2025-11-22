@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Beaneater
   # Represents collection of tube related commands.
 

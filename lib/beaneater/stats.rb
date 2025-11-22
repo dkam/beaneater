@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'beaneater/stats/fast_struct'
 require 'beaneater/stats/stat_struct'
 

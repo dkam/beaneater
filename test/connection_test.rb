@@ -103,6 +103,7 @@ describe Beaneater::Connection do
       client = Beaneater.new('127.0.0.1:11300')
       client.tubes.watch! "another"
 
+      $called = false
       TCPSocket.prepend Module.new {
         def readline
           if !$called
@@ -115,6 +116,8 @@ describe Beaneater::Connection do
       }
 
       assert_equal %w[another], client.tubes.watched.map(&:name)
+    ensure
+      $called = nil
     end
   end # transmit
 

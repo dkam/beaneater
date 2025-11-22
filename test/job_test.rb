@@ -12,6 +12,7 @@ describe Beaneater::Job do
 
   describe "for #bury" do
     before do
+      @tube.clear
       @time = Time.now.to_i
       @tube.put "foo bury #{@time}", :pri => 5
     end

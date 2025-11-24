@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Beaneater
   # Exception to stop processing jobs during a `process!` loop.
   # Simply `raise AbortProcessingError` in any job process handler to stop the processing loop.

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Beaneater
   # Raises when a beanstalkd instance is no longer accessible.
   class NotConnected < RuntimeError; end

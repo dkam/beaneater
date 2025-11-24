@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Beaneater
   # Beanstalk tube which contains jobs which can be inserted, reserved, et al.
   class Tube

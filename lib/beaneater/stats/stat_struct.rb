@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Beaneater
   # Represents a stats hash with proper underscored keys
   class StatStruct < FasterOpenStruct

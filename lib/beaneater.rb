@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'thread' unless defined?(Mutex)
 
 %w(version configuration errors connection tube job stats).each do |f|

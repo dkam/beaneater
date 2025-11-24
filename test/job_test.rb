@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # test/job_test.rb
 
 require File.expand_path('../test_helper', __FILE__)
@@ -10,6 +12,7 @@ describe Beaneater::Job do
 
   describe "for #bury" do
     before do
+      @tube.clear
       @time = Time.now.to_i
       @tube.put "foo bury #{@time}", :pri => 5
     end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'yaml'
 require 'socket'
 
@@ -74,7 +76,7 @@ class Beaneater
         @mutex.synchronize do
           _raise_not_connected! unless connection
 
-          command = command.force_encoding('ASCII-8BIT') if command.respond_to?(:force_encoding)
+          command = command.dup.force_encoding('ASCII-8BIT') if command.respond_to?(:force_encoding)
           connection.write(command.to_s + "\r\n")
           res = connection.readline
           parse_response(command, res)

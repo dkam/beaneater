@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'term/ansicolor'
 class String; include Term::ANSIColor; end
 def step(msg); "\n[STEP] #{msg}...".yellow; end

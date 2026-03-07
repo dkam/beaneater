@@ -1,5 +1,12 @@
 # CHANGELOG for Beaneater
 
+## 1.1.4 (March 6 2026)
+
+* Add frozen string literal comments for Ruby 3.4 compatibility (@nearapogee)
+* Update tests for Ruby 3.4.x (@nearapogee)
+* Add GitHub Actions CI workflow (@Ifiht)
+* Update README.md (@Ifiht)
+
 ## 1.1.3 (Oct 14 2022)
 
 * Fixes issue introduced in 1.1.2 re YML parsing (@pond)

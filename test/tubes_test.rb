@@ -118,6 +118,46 @@ describe Beaneater::Tubes do
     end
   end # ignore
 
+  describe "for #watch with weight" do
+    before do
+      @beanstalk = stub
+      @connection = stub(tubes_watched: ['default'])
+      @beanstalk.stubs(:connection).returns(@connection)
+      @tubes = Beaneater::Tubes.new(@beanstalk)
+    end
+
+    it 'should send watch command with weight' do
+      @connection.expects(:transmit).with("watch foo 4").returns({status: "WATCHING", id: "2"})
+      @connection.expects(:add_to_watched).with("foo")
+      @tubes.watch('foo', weight: 4)
+    end
+
+    it 'should send watch command without weight by default' do
+      @connection.expects(:transmit).with("watch foo").returns({status: "WATCHING", id: "2"})
+      @connection.expects(:add_to_watched).with("foo")
+      @tubes.watch('foo')
+    end
+  end # watch with weight
+
+  describe "for #reserve_mode" do
+    before do
+      @beanstalk = stub
+      @connection = stub
+      @beanstalk.stubs(:connection).returns(@connection)
+      @tubes = Beaneater::Tubes.new(@beanstalk)
+    end
+
+    it 'should send reserve-mode weighted command' do
+      @connection.expects(:transmit).with("reserve-mode weighted").returns({status: "USING", id: "weighted"})
+      @tubes.reserve_mode(:weighted)
+    end
+
+    it 'should send reserve-mode fifo command' do
+      @connection.expects(:transmit).with("reserve-mode fifo").returns({status: "USING", id: "fifo"})
+      @tubes.reserve_mode(:fifo)
+    end
+  end # reserve_mode
+
   describe "for #reserve" do
     before do
       @beanstalk  = Beaneater.new('localhost')

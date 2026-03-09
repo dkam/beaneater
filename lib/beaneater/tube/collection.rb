@@ -69,6 +69,19 @@ class Beaneater
       job
     end
 
+    # Sets the reserve mode for the connection.
+    #
+    # @param [String, Symbol] mode The reserve mode ('weighted' or 'fifo')
+    # @return [Hash] Response from beanstalkd
+    # @example
+    #   @client.tubes.reserve_mode(:weighted)
+    #   @client.tubes.reserve_mode(:fifo)
+    #
+    # @api public
+    def reserve_mode(mode)
+      transmit("reserve-mode #{mode}")
+    end
+
     # List of all known beanstalk tubes.
     #
     # @return [Array<Beaneater::Tube>] List of all beanstalk tubes.
@@ -131,9 +144,10 @@ class Beaneater
     #   @client.tubes.watch('foo', 'bar')
     #
     # @api public
-    def watch(*names)
+    def watch(*names, weight: nil)
       names.each do |t|
-        transmit "watch #{t}"
+        cmd = weight ? "watch #{t} #{weight}" : "watch #{t}"
+        transmit cmd
         client.connection.add_to_watched(t)
       end
     rescue BadFormatError => ex

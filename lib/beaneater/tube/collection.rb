@@ -69,6 +69,22 @@ class Beaneater
       job
     end
 
+    # Reserves a batch of ready jobs from watched tubes.
+    #
+    # @param [Integer] count Maximum number of jobs to reserve
+    # @param [Integer] timeout Number of seconds to wait for jobs
+    # @return [Array<Beaneater::Job>] Array of reserved jobs
+    # @raise [Beaneater::TimedOutError] No jobs available within timeout
+    # @example
+    #   @client.tubes.reserve_batch(10, timeout: 5)
+    #     # => [<Beaneater::Job id=1 body="foo">, ...]
+    #
+    # @api public
+    def reserve_batch(count, timeout: nil)
+      results = client.connection.reserve_batch(count, timeout: timeout)
+      results.map { |res| Job.new(client, res) }
+    end
+
     # List of all known beanstalk tubes.
     #
     # @return [Array<Beaneater::Tube>] List of all beanstalk tubes.

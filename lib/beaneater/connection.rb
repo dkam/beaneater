@@ -84,6 +84,44 @@ class Beaneater
       end
     end
 
+    # Reserves a batch of jobs atomically.
+    #
+    # @param [Integer] count Maximum number of jobs to reserve
+    # @param [Integer] timeout Number of seconds to wait for jobs
+    # @return [Array<Hash>] Array of job hashes with :status, :id, :body keys
+    # @raise [Beaneater::TimedOutError] No jobs available within timeout
+    #
+    def reserve_batch(count, timeout: nil)
+      _with_retry do
+        @mutex.synchronize do
+          _raise_not_connected! unless connection
+
+          cmd = timeout ? "reserve-batch #{count} #{timeout}" : "reserve-batch #{count}"
+          connection.write(cmd + "\r\n")
+
+          header = connection.readline.chomp
+          status, actual_count_str = header.split(/\s/, 2)
+
+          raise UnexpectedResponse.from_status(status, cmd) unless status == "RESERVED_BATCH"
+
+          actual_count = actual_count_str.to_i
+          jobs = []
+          actual_count.times do
+            line = connection.readline.chomp
+            _, job_id, bytes_str = line.split(/\s/)
+            bytes = bytes_str.to_i
+            body = connection.read(bytes)
+            crlf = connection.read(2)
+            raise ExpectedCrlfError.new("EXPECTED_CRLF", cmd) unless crlf == "\r\n"
+
+            body = config.job_parser.call(body)
+            jobs << { status: "RESERVED", id: job_id, body: body }
+          end
+          jobs
+        end
+      end
+    end
+
     # Close connection with beanstalkd server.
     #
     # @example

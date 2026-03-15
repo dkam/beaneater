@@ -154,13 +154,21 @@ describe Beaneater::Connection do
       assert_raises(Beaneater::NotConnected) { @bc.transmit 'stats' }
     end
   end # close
-  describe 'for drain command' do
-    it "should return DRAINING status" do
+  describe 'for drain and undrain commands' do
+    it "should return DRAINING status for drain command" do
       @bc = Beaneater::Connection.new('localhost')
       TCPSocket.any_instance.stubs(:write)
       TCPSocket.any_instance.expects(:readline).returns("DRAINING\r\n")
       res = @bc.transmit("drain")
       assert_equal 'DRAINING', res[:status]
+    end
+
+    it "should return NOT_DRAINING status for undrain command" do
+      @bc = Beaneater::Connection.new('localhost')
+      TCPSocket.any_instance.stubs(:write)
+      TCPSocket.any_instance.expects(:readline).returns("NOT_DRAINING\r\n")
+      res = @bc.transmit("undrain")
+      assert_equal 'NOT_DRAINING', res[:status]
     end
 
     it "should still raise DrainingError for non-drain commands" do
@@ -169,5 +177,5 @@ describe Beaneater::Connection do
       TCPSocket.any_instance.expects(:readline).times(3).returns("DRAINING\r\n")
       assert_raises(Beaneater::DrainingError) { @bc.transmit("put 0 0 100 4\r\ntest") }
     end
-  end # drain
+  end # drain and undrain
 end # Beaneater::Connection

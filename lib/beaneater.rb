@@ -61,6 +61,16 @@ class Beaneater
     connection.transmit("drain")
   end
 
+  # Takes the server out of drain mode, allowing new puts.
+  #
+  # @return [Hash] Response from beanstalkd
+  # @example
+  #  @beaneater_instance.undrain
+  #
+  def undrain
+    connection.transmit("undrain")
+  end
+
   # Closes the related connection
   #
   # @example

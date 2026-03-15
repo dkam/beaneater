@@ -72,16 +72,15 @@ class Beaneater
     # Reserves a batch of ready jobs from watched tubes.
     #
     # @param [Integer] count Maximum number of jobs to reserve
-    # @param [Integer] timeout Number of seconds to wait for jobs
     # @return [Array<Beaneater::Job>] Array of reserved jobs
     # @raise [Beaneater::TimedOutError] No jobs available within timeout
     # @example
-    #   @client.tubes.reserve_batch(10, timeout: 5)
+    #   @client.tubes.reserve_batch(10)
     #     # => [<Beaneater::Job id=1 body="foo">, ...]
     #
     # @api public
-    def reserve_batch(count, timeout: nil)
-      results = client.connection.reserve_batch(count, timeout: timeout)
+    def reserve_batch(count)
+      results = client.connection.reserve_batch(count)
       results.map { |res| Job.new(client, res) }
     end
 
@@ -96,6 +95,36 @@ class Beaneater
     # @api public
     def reserve_mode(mode)
       transmit("reserve-mode #{mode}")
+    end
+
+    # Reserves a specific job by its ID.
+    #
+    # @param [Integer, String] id The job ID to reserve
+    # @return [Beaneater::Job, nil] The reserved job, or nil if not found
+    # @example
+    #   @client.tubes.reserve_job(123)
+    #     # => <Beaneater::Job id=123 body="foo">
+    #
+    # @api public
+    def reserve_job(id)
+      res = transmit("reserve-job #{id}")
+      Job.new(client, res)
+    rescue Beaneater::NotFoundError
+      nil
+    end
+
+    # Returns stats for a job group.
+    #
+    # @param [String] group The group name
+    # @return [Beaneater::StatStruct] Struct of group stats
+    # @example
+    #   @client.tubes.stats_group('batch-1')
+    #     # => #<StatStruct name="batch-1" pending=5 ...>
+    #
+    # @api public
+    def stats_group(group)
+      res = transmit("stats-group #{group}")
+      StatStruct.from_hash(res[:body])
     end
 
     # List of all known beanstalk tubes.

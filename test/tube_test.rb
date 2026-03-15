@@ -132,6 +132,58 @@ describe Beaneater::Tube do
     end
   end # reserve
 
+  describe "for #put with tuber tags" do
+    before do
+      @beanstalk = stub
+      @connection = stub(tube_used: 'baz')
+      @beanstalk.stubs(:connection).returns(@connection)
+      @tubes = stub
+      @tubes.stubs(:use).with('baz').returns('baz')
+      @beanstalk.stubs(:tubes).returns(@tubes)
+      @tube = Beaneater::Tube.new(@beanstalk, 'baz')
+    end
+
+    it "should append idp tag as string" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 idp:report\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", idp: "report"
+    end
+
+    it "should append idp tag with ttl as array" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 idp:report:300\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", idp: ["report", 300]
+    end
+
+    it "should append con tag as string" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 con:db\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", con: "db"
+    end
+
+    it "should append con tag with limit as array" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 con:db:3\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", con: ["db", 3]
+    end
+
+    it "should append grp tag" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 grp:batch-1\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", grp: "batch-1"
+    end
+
+    it "should append aft tag" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 aft:batch-0\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", aft: "batch-0"
+    end
+
+    it "should append all four tags" do
+      @connection.expects(:transmit).with("put 65536 0 120 4 idp:key:60 con:db:2 grp:g1 aft:g0\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data", idp: ["key", 60], con: ["db", 2], grp: "g1", aft: "g0"
+    end
+
+    it "should send plain put without tags" do
+      @connection.expects(:transmit).with("put 65536 0 120 4\r\ndata").returns({status: "INSERTED", id: "1"})
+      @tube.put "data"
+    end
+  end # put with tuber tags
+
   describe "for #pause" do
     before do
       @time = Time.now.to_i
@@ -197,4 +249,22 @@ describe Beaneater::Tube do
       assert_equal [0, 0, 0], tube_counts.call
     end
   end # clear
+  describe "for #flush" do
+    before do
+      @tube = Beaneater::Tube.new(@beanstalk, 'flush_test')
+      3.times { |i| @tube.put "flush job #{i}" }
+    end
+
+    it "should flush all jobs and return count" do
+      count = @tube.flush
+      assert_equal 3, count
+      assert_nil @tube.peek(:ready)
+    end
+
+    it "should return 0 for empty tube" do
+      @tube.flush
+      count = @tube.flush
+      assert_equal 0, count
+    end
+  end # flush
 end # Beaneater::Tube

@@ -51,6 +51,16 @@ class Beaneater
     @stats ||= Stats.new(self)
   end
 
+  # Puts the server into drain mode, rejecting new puts.
+  #
+  # @return [Hash] Response from beanstalkd
+  # @example
+  #  @beaneater_instance.drain
+  #
+  def drain
+    connection.transmit("drain")
+  end
+
   # Closes the related connection
   #
   # @example

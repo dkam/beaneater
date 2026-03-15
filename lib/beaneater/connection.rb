@@ -91,12 +91,12 @@ class Beaneater
     # @return [Array<Hash>] Array of job hashes with :status, :id, :body keys
     # @raise [Beaneater::TimedOutError] No jobs available within timeout
     #
-    def reserve_batch(count, timeout: nil)
+    def reserve_batch(count)
       _with_retry do
         @mutex.synchronize do
           _raise_not_connected! unless connection
 
-          cmd = timeout ? "reserve-batch #{count} #{timeout}" : "reserve-batch #{count}"
+          cmd = "reserve-batch #{count}"
           connection.write(cmd + "\r\n")
 
           header = connection.readline.chomp
@@ -118,6 +118,29 @@ class Beaneater
             jobs << { status: "RESERVED", id: job_id, body: body }
           end
           jobs
+        end
+      end
+    end
+
+    # Deletes a batch of jobs atomically.
+    #
+    # @param [Array<Integer, String>] ids Job IDs to delete
+    # @return [Hash] with :deleted and :not_found counts
+    #
+    def delete_batch(ids)
+      _with_retry do
+        @mutex.synchronize do
+          _raise_not_connected! unless connection
+
+          cmd = "delete-batch #{ids.join(' ')}"
+          connection.write(cmd + "\r\n")
+
+          res = connection.readline.chomp
+          status, deleted, not_found = res.split(/\s/)
+
+          raise UnexpectedResponse.from_status(status, cmd) unless status == "DELETED_BATCH"
+
+          { deleted: deleted.to_i, not_found: not_found.to_i }
         end
       end
     end
@@ -185,8 +208,14 @@ class Beaneater
       status = res.chomp
       body_values = status.split(/\s/)
       status = body_values[0]
+      if status == "DRAINING" && cmd.strip.start_with?("drain")
+        return { status: status }
+      end
       raise UnexpectedResponse.from_status(status, cmd) if UnexpectedResponse::ERROR_STATES.include?(status)
       body = nil
+      if status == 'FLUSHED'
+        return { status: status, id: body_values[1] }
+      end
       if ['OK','FOUND', 'RESERVED'].include?(status)
         bytes_size = body_values[-1].to_i
         raw_body = connection.read(bytes_size)
@@ -203,6 +232,7 @@ class Beaneater
       response = { :status => status }
       response[:id] = id if id
       response[:body] = body if body
+      response[:state] = body_values[2] if status == 'INSERTED' && body_values[2]
       response
     end
 

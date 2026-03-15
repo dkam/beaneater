@@ -121,6 +121,26 @@ describe Beaneater::Connection do
     end
   end # transmit
 
+  describe 'for idempotent insert response' do
+    before do
+      @host = 'localhost'
+      @bc = Beaneater::Connection.new(@host)
+      @idp_key = "testkey_#{Time.now.to_f}"
+    end
+
+    it "should return state for dedup hit" do
+      @bc.transmit "use idp_test"
+      res1 = @bc.transmit "put 0 0 100 4 idp:#{@idp_key}\r\ndata"
+      assert_equal 'INSERTED', res1[:status]
+      assert_nil res1[:state]
+
+      res2 = @bc.transmit "put 0 0 100 4 idp:#{@idp_key}\r\ndata"
+      assert_equal 'INSERTED', res2[:status]
+      assert_equal res1[:id], res2[:id]
+      assert_equal 'READY', res2[:state]
+    end
+  end # idempotent insert response
+
   describe 'for #close' do
     before do
       @host = 'localhost'
@@ -134,4 +154,20 @@ describe Beaneater::Connection do
       assert_raises(Beaneater::NotConnected) { @bc.transmit 'stats' }
     end
   end # close
+  describe 'for drain command' do
+    it "should return DRAINING status" do
+      @bc = Beaneater::Connection.new('localhost')
+      TCPSocket.any_instance.stubs(:write)
+      TCPSocket.any_instance.expects(:readline).returns("DRAINING\r\n")
+      res = @bc.transmit("drain")
+      assert_equal 'DRAINING', res[:status]
+    end
+
+    it "should still raise DrainingError for non-drain commands" do
+      @bc = Beaneater::Connection.new('localhost')
+      TCPSocket.any_instance.stubs(:write)
+      TCPSocket.any_instance.expects(:readline).times(3).returns("DRAINING\r\n")
+      assert_raises(Beaneater::DrainingError) { @bc.transmit("put 0 0 100 4\r\ntest") }
+    end
+  end # drain
 end # Beaneater::Connection

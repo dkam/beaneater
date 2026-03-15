@@ -209,15 +209,16 @@ describe Beaneater::Tubes do
       @tube = @beanstalk.tubes.find 'batch_tube'
     end
 
-    it "should raise TimedOutError on empty queue with timeout" do
+    it "should return empty array on empty queue" do
       @beanstalk.tubes.watch! 'batch_tube'
-      assert_raises(Beaneater::TimedOutError) { @beanstalk.tubes.reserve_batch(5, timeout: 0) }
+      jobs = @beanstalk.tubes.reserve_batch(5)
+      assert_equal 0, jobs.size
     end
 
     it "should reserve 1 job" do
       @tube.put "batch job 1"
       @beanstalk.tubes.watch! 'batch_tube'
-      jobs = @beanstalk.tubes.reserve_batch(1, timeout: 0)
+      jobs = @beanstalk.tubes.reserve_batch(1)
       assert_equal 1, jobs.size
       assert_kind_of Beaneater::Job, jobs.first
       assert_equal "batch job 1", jobs.first.body
@@ -227,7 +228,7 @@ describe Beaneater::Tubes do
     it "should reserve N jobs" do
       3.times { |i| @tube.put "batch job #{i}" }
       @beanstalk.tubes.watch! 'batch_tube'
-      jobs = @beanstalk.tubes.reserve_batch(3, timeout: 0)
+      jobs = @beanstalk.tubes.reserve_batch(3)
       assert_equal 3, jobs.size
       jobs.each do |job|
         assert_kind_of Beaneater::Job, job
@@ -238,7 +239,7 @@ describe Beaneater::Tubes do
     it "should return partial results when fewer available than requested" do
       2.times { |i| @tube.put "partial job #{i}" }
       @beanstalk.tubes.watch! 'batch_tube'
-      jobs = @beanstalk.tubes.reserve_batch(10, timeout: 0)
+      jobs = @beanstalk.tubes.reserve_batch(10)
       assert_equal 2, jobs.size
       jobs.each(&:delete)
     end
@@ -246,10 +247,51 @@ describe Beaneater::Tubes do
     it "should return deletable jobs" do
       @tube.put "deletable job"
       @beanstalk.tubes.watch! 'batch_tube'
-      jobs = @beanstalk.tubes.reserve_batch(1, timeout: 0)
+      jobs = @beanstalk.tubes.reserve_batch(1)
       assert_equal 1, jobs.size
       jobs.first.delete
       assert_raises(Beaneater::NotFoundError) { jobs.first.stats }
     end
   end # reserve_batch
+  describe "for #reserve_job" do
+    before do
+      @beanstalk = Beaneater.new('localhost')
+      @tube = @beanstalk.tubes.find 'reserve_job_tube'
+      @time = Time.now.to_i
+      @tube.put "reserve_job test #{@time}"
+    end
+
+    it "should reserve a specific job by id" do
+      job_id = @tube.peek(:ready).id
+      job = @beanstalk.tubes.reserve_job(job_id)
+      assert_kind_of Beaneater::Job, job
+      assert_equal job_id, job.id
+      assert_equal "reserve_job test #{@time}", job.body
+      job.delete
+    end
+
+    it "should return nil for non-existent job" do
+      result = @beanstalk.tubes.reserve_job(999999999)
+      assert_nil result
+    end
+  end # reserve_job
+
+  describe "for #stats_group" do
+    before do
+      @beanstalk = Beaneater.new('localhost')
+      @tube = @beanstalk.tubes.find 'stats_group_tube'
+      @group_name = "test_group_#{Time.now.to_i}"
+      2.times { @tube.put "group job", grp: @group_name }
+    end
+
+    it "should return stats for a group" do
+      stats = @beanstalk.tubes.stats_group(@group_name)
+      assert_equal @group_name, stats.name
+      assert_equal 2, stats.pending
+    end
+
+    it "should raise NotFoundError for non-existent group" do
+      assert_raises(Beaneater::NotFoundError) { @beanstalk.tubes.stats_group("nonexistent_group_xyz") }
+    end
+  end # stats_group
 end # Beaneater::Tubes

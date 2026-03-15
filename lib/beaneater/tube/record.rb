@@ -37,9 +37,14 @@ class Beaneater
     # @option options [Integer] pri priority for this job
     # @option options [Integer] ttr time to respond for this job
     # @option options [Integer] delay delay for this job
+    # @option options [String, Array] idp idempotency key, or [key, ttl] pair
+    # @option options [String, Array] con concurrency key, or [key, limit] pair
+    # @option options [String] grp group key for this job
+    # @option options [String] aft after-group key (run after group completes)
     # @return [Hash{String => String, Number}] beanstalkd command response
     # @example
-    #   @tube.put "data", :pri => 1000, :ttr => 10, :delay => 5
+    #   @tube.put "data", pri: 1000, ttr: 10, delay: 5
+    #   @tube.put "data", idp: "report", con: ["db", 3], grp: "batch-1", aft: "batch-0"
     #
     # @api public
     def put(body, options={})
@@ -53,6 +58,18 @@ class Beaneater
         }.merge(options)
 
         cmd_options = "#{options[:pri]} #{options[:delay]} #{options[:ttr]} #{serialized_body.bytesize}"
+
+        tags = []
+        if options[:idp]
+          tags << (options[:idp].is_a?(Array) ? "idp:#{options[:idp].join(':')}" : "idp:#{options[:idp]}")
+        end
+        if options[:con]
+          tags << (options[:con].is_a?(Array) ? "con:#{options[:con].join(':')}" : "con:#{options[:con]}")
+        end
+        tags << "grp:#{options[:grp]}" if options[:grp]
+        tags << "aft:#{options[:aft]}" if options[:aft]
+
+        cmd_options = "#{cmd_options} #{tags.join(' ')}" if tags.any?
         transmit("put #{cmd_options}\r\n#{serialized_body}")
       end
     end
@@ -124,6 +141,18 @@ class Beaneater
     # @api public
     def pause(delay)
       transmit("pause-tube #{name} #{delay}")
+    end
+
+    # Atomically deletes all jobs from the tube.
+    #
+    # @return [Integer] Number of jobs flushed
+    # @example
+    #   @tube.flush # => 5
+    #
+    # @api public
+    def flush
+      res = transmit("flush-tube #{name}")
+      res[:id].to_i
     end
 
     # Clears all unreserved jobs in all states from the tube

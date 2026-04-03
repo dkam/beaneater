@@ -131,14 +131,20 @@ class Beaneater
 
       tcp_opts = { connect_timeout: config.connect_timeout, resolv_timeout: config.resolv_timeout }.compact
 
-      @connection = if RUBY_VERSION >= "3.0" && tcp_opts.any?
+      socket = if RUBY_VERSION >= "3.0" && tcp_opts.any?
         TCPSocket.new(@host, @port, **tcp_opts)
       else
         TCPSocket.new(@host, @port)
       end
 
-      @connection.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, _timeval_for(config.read_timeout)) if config.read_timeout
-      @connection.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, _timeval_for(config.write_timeout)) if config.write_timeout
+      begin
+        socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, _timeval_for(config.read_timeout)) if config.read_timeout
+        socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, _timeval_for(config.write_timeout)) if config.write_timeout
+        @connection = socket
+      rescue
+        socket.close rescue nil
+        raise
+      end
     end
 
     # Parses the response and returns the useful beanstalk response.

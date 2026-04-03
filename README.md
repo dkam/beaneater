@@ -133,10 +133,16 @@ Beaneater.configure do |config|
   # config.job_parser          = lambda { |body| body }
   # config.job_serializer      = lambda { |body| body }
   # config.beanstalkd_url      = 'localhost:11300'
+  # config.connect_timeout     = nil
+  # config.resolv_timeout      = nil
+  # config.read_timeout        = nil
+  # config.write_timeout       = nil
 end
 ```
 
 The above options are all defaults, so only include a configuration block if you need to make changes.
+
+`connect_timeout` and `resolv_timeout` are passed through to `TCPSocket.new` on Ruby 3.0 and newer (ignored on Ruby < 3.0 for compatibility). `read_timeout` and `write_timeout` apply socket read and write timeouts via `setsockopt`.
 
 ### Connection
 

@@ -129,7 +129,18 @@ class Beaneater
       match = address.split(':')
       @host, @port = match[0], Integer(match[1] || DEFAULT_PORT)
 
-      @connection = TCPSocket.new @host, @port
+      tcp_opts = { connect_timeout: config.connect_timeout, resolv_timeout: config.resolv_timeout }.compact
+
+      socket = if RUBY_VERSION.to_i >= 3 && tcp_opts.any?
+        TCPSocket.new(@host, @port, **tcp_opts)
+      else
+        TCPSocket.new(@host, @port)
+      end
+
+      socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, [config.read_timeout, 0].pack('l_l_')) if config.read_timeout
+      socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, [config.write_timeout, 0].pack('l_l_')) if config.write_timeout
+
+      @connection = socket
     end
 
     # Parses the response and returns the useful beanstalk response.

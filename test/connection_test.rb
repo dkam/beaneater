@@ -52,7 +52,7 @@ describe Beaneater::Connection do
     end
 
     it "should pass connect_timeout and resolv_timeout to TCPSocket.new on Ruby >= 3.0" do
-      skip("connect_timeout/resolv_timeout kwargs require Ruby >= 3.0") if RUBY_VERSION.to_i < 3
+      skip("connect_timeout/resolv_timeout kwargs require Ruby >= 3.0") if RUBY_VERSION < "3.0"
 
       Beaneater.configure do |config|
         config.connect_timeout = 2
@@ -67,7 +67,7 @@ describe Beaneater::Connection do
     end
 
     it "should ignore connect_timeout and resolv_timeout on Ruby < 3.0" do
-      skip("connect_timeout/resolv_timeout kwargs are supported on Ruby >= 3.0") if RUBY_VERSION.to_i >= 3
+      skip("connect_timeout/resolv_timeout kwargs are supported on Ruby >= 3.0") if RUBY_VERSION >= "3.0"
 
       Beaneater.configure do |config|
         config.connect_timeout = 2

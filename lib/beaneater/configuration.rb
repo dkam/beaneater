@@ -8,6 +8,10 @@ class Beaneater
     attr_accessor :job_parser          # default job_parser to parse job body
     attr_accessor :job_serializer      # default serializer for job body
     attr_accessor :beanstalkd_url      # default beanstalkd url
+    attr_accessor :connect_timeout     # TCP connect timeout in seconds
+    attr_accessor :resolv_timeout      # DNS resolve timeout in seconds
+    attr_accessor :read_timeout        # socket read timeout in seconds
+    attr_accessor :write_timeout       # socket write timeout in seconds
 
     def initialize
       @default_put_delay   = 0
@@ -16,6 +20,10 @@ class Beaneater
       @job_parser          = lambda { |body| body }
       @job_serializer      = lambda { |body| body }
       @beanstalkd_url      = nil
+      @connect_timeout     = nil
+      @resolv_timeout      = nil
+      @read_timeout        = nil
+      @write_timeout       = nil
     end
   end # Configuration
 end # Beaneater

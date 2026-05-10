@@ -41,6 +41,61 @@ describe Beaneater::Connection do
     end
   end # new
 
+  describe 'for timeout configuration' do
+    after do
+      Beaneater.configure do |config|
+        config.connect_timeout = nil
+        config.resolv_timeout  = nil
+        config.read_timeout    = nil
+        config.write_timeout   = nil
+      end
+    end
+
+    it "should pass connect_timeout and resolv_timeout to TCPSocket.new on Ruby >= 3.0" do
+      skip("connect_timeout/resolv_timeout kwargs require Ruby >= 3.0") if RUBY_VERSION < "3.0"
+
+      Beaneater.configure do |config|
+        config.connect_timeout = 2
+        config.resolv_timeout  = 2
+      end
+
+      real_socket = TCPSocket.new('localhost', 11300)
+      TCPSocket.expects(:new).with('localhost', 11300, connect_timeout: 2, resolv_timeout: 2).returns(real_socket)
+
+      bc = Beaneater::Connection.new('localhost')
+      assert_kind_of TCPSocket, bc.connection
+    end
+
+    it "should ignore connect_timeout and resolv_timeout on Ruby < 3.0" do
+      skip("connect_timeout/resolv_timeout kwargs are supported on Ruby >= 3.0") if RUBY_VERSION >= "3.0"
+
+      Beaneater.configure do |config|
+        config.connect_timeout = 2
+        config.resolv_timeout  = 4
+      end
+
+      real_socket = TCPSocket.new('localhost', 11300)
+      TCPSocket.expects(:new).with('localhost', 11300).returns(real_socket)
+
+      bc = Beaneater::Connection.new('localhost')
+      assert_same real_socket, bc.connection
+    end
+
+    it "should set SO_RCVTIMEO and SO_SNDTIMEO when read/write timeouts are configured" do
+      Beaneater.configure do |config|
+        config.read_timeout  = 3
+        config.write_timeout = 5
+      end
+
+      bc = Beaneater::Connection.new('localhost')
+      rcv = bc.connection.getsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO).unpack('l_l_')[0]
+      snd = bc.connection.getsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO).unpack('l_l_')[0]
+      assert_equal 3, rcv
+      assert_equal 5, snd
+    end
+
+  end # timeout configuration
+
   describe 'for #transmit' do
     before do
       @host = 'localhost'

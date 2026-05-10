@@ -190,7 +190,22 @@ class Beaneater
       match = address.split(':')
       @host, @port = match[0], Integer(match[1] || DEFAULT_PORT)
 
-      @connection = TCPSocket.new @host, @port
+      tcp_opts = { connect_timeout: config.connect_timeout, resolv_timeout: config.resolv_timeout }.compact
+
+      socket = if RUBY_VERSION >= "3.0" && tcp_opts.any?
+        TCPSocket.new(@host, @port, **tcp_opts)
+      else
+        TCPSocket.new(@host, @port)
+      end
+
+      begin
+        socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, _timeval_for(config.read_timeout)) if config.read_timeout
+        socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, _timeval_for(config.write_timeout)) if config.write_timeout
+        @connection = socket
+      rescue
+        socket.close rescue nil
+        raise
+      end
     end
 
     # Parses the response and returns the useful beanstalk response.
@@ -307,6 +322,14 @@ class Beaneater
     #
     def _host_from_env
       ENV['BEANSTALKD_URL'].respond_to?(:length) && ENV['BEANSTALKD_URL'].length > 0 && ENV['BEANSTALKD_URL'].strip
+    end
+
+    # Packs a timeout value (in seconds) into a struct timeval binary string.
+    # Supports fractional seconds (e.g., 0.5 => 500000 usec).
+    def _timeval_for(timeout)
+      sec = timeout.to_i
+      usec = ((timeout.to_f - sec) * 1_000_000).to_i
+      [sec, usec].pack('l_l_')
     end
 
     # Raises an error to be triggered when the connection has failed

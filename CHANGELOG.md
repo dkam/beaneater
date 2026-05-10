@@ -1,5 +1,10 @@
 # CHANGELOG for Beaneater
 
+## Unreleased
+
+* Add `connect_timeout` (Ruby 3+), `resolv_timeout` (Ruby 3+), `read_timeout`, and `write_timeout` configuration options (@rveznaver)
+* Fix fractional timeout handling for `read_timeout` and `write_timeout` socket options
+
 ## 1.1.4 (March 6 2026)
 
 * Add frozen string literal comments for Ruby 3.4 compatibility (@nearapogee)

@@ -71,16 +71,22 @@ class Beaneater
 
     # Reserves a batch of ready jobs from watched tubes.
     #
+    # Without a +timeout+ the call is non-blocking and may return an empty array.
+    # With a positive +timeout+ it long-polls, blocking up to +timeout+ seconds
+    # for the first job before draining whatever is ready, up to +count+.
+    #
     # @param [Integer] count Maximum number of jobs to reserve
-    # @return [Array<Beaneater::Job>] Array of reserved jobs
-    # @raise [Beaneater::TimedOutError] No jobs available within timeout
+    # @param [Integer] timeout Seconds to long-poll for the first job (nil = non-blocking)
+    # @return [Array<Beaneater::Job>] Array of reserved jobs (empty if none available)
+    # @raise [Beaneater::DeadlineSoonError] A reserved job's TTR is about to expire
     # @example
-    #   @client.tubes.reserve_batch(10)
+    #   @client.tubes.reserve_batch(10)       # non-blocking
+    #   @client.tubes.reserve_batch(10, 30)   # long-poll up to 30s
     #     # => [<Beaneater::Job id=1 body="foo">, ...]
     #
     # @api public
-    def reserve_batch(count)
-      results = client.connection.reserve_batch(count)
+    def reserve_batch(count, timeout = nil)
+      results = client.connection.reserve_batch(count, timeout)
       results.map { |res| Job.new(client, res) }
     end
 

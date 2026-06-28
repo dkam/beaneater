@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Add `Tube#flush_buried` (Tuber only): atomically deletes only the buried jobs in a tube, returning the count
+* Add optional long-poll `timeout` to `reserve_batch` (Tuber only): `tubes.reserve_batch(count, timeout)` blocks up to `timeout` seconds for the first job, then drains what's ready
 * Add `connect_timeout` (Ruby 3+), `resolv_timeout` (Ruby 3+), `read_timeout`, and `write_timeout` configuration options (@rveznaver)
 * Fix fractional timeout handling for `read_timeout` and `write_timeout` socket options
 

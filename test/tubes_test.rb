@@ -252,6 +252,34 @@ describe Beaneater::Tubes do
       jobs.first.delete
       assert_raises(Beaneater::NotFoundError) { jobs.first.stats }
     end
+
+    it "should return empty array when long-poll times out" do
+      @beanstalk.tubes.watch! 'batch_tube'
+      jobs = @beanstalk.tubes.reserve_batch(5, 1)
+      assert_equal 0, jobs.size
+    end
+
+    it "should drain ready jobs with a positive timeout" do
+      2.times { |i| @tube.put "timeout job #{i}" }
+      @beanstalk.tubes.watch! 'batch_tube'
+      jobs = @beanstalk.tubes.reserve_batch(10, 1)
+      assert_equal 2, jobs.size
+      jobs.each(&:delete)
+    end
+
+    it "should block until a job arrives within the timeout" do
+      @beanstalk.tubes.watch! 'batch_tube'
+      Thread.new do
+        sleep 0.2
+        producer = Beaneater.new('localhost')
+        producer.tubes.find('batch_tube').put "delayed job"
+        producer.close
+      end
+      jobs = @beanstalk.tubes.reserve_batch(5, 3)
+      assert_equal 1, jobs.size
+      assert_equal "delayed job", jobs.first.body
+      jobs.each(&:delete)
+    end
   end # reserve_batch
   describe "for #reserve_job" do
     before do

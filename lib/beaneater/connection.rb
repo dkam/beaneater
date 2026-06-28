@@ -86,17 +86,22 @@ class Beaneater
 
     # Reserves a batch of jobs atomically.
     #
-    # @param [Integer] count Maximum number of jobs to reserve
-    # @param [Integer] timeout Number of seconds to wait for jobs
-    # @return [Array<Hash>] Array of job hashes with :status, :id, :body keys
-    # @raise [Beaneater::TimedOutError] No jobs available within timeout
+    # Without a +timeout+ (or with +timeout+ of 0) the command is non-blocking:
+    # it returns whatever is ready immediately, possibly an empty array. With a
+    # positive +timeout+ it long-polls, blocking until the first job arrives (up
+    # to +timeout+ seconds) and then draining everything ready, up to +count+.
     #
-    def reserve_batch(count)
+    # @param [Integer] count Maximum number of jobs to reserve
+    # @param [Integer] timeout Seconds to long-poll for the first job (nil = non-blocking)
+    # @return [Array<Hash>] Array of job hashes with :status, :id, :body keys
+    # @raise [Beaneater::DeadlineSoonError] A reserved job's TTR is about to expire
+    #
+    def reserve_batch(count, timeout = nil)
       _with_retry do
         @mutex.synchronize do
           _raise_not_connected! unless connection
 
-          cmd = "reserve-batch #{count}"
+          cmd = timeout ? "reserve-batch #{count} #{timeout}" : "reserve-batch #{count}"
           connection.write(cmd + "\r\n")
 
           header = connection.readline.chomp

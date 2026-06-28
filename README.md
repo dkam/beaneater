@@ -85,8 +85,10 @@ Tubes are beanstalk's work queues. Jobs are `put` into the used tube and `reserv
 @beanstalk.tubes.watched   # => [<Tube name='foo'>]
 
 # Manage tubes
-@tube.pause(3)  # pause for 3 seconds
-@tube.clear     # delete all jobs
+@tube.pause(3)        # pause for 3 seconds
+@tube.clear           # delete all jobs
+@tube.flush           # delete all jobs, returns count
+@tube.flush_buried    # delete only buried jobs (Tuber only), returns count
 ```
 
 Each client manages two separate concerns: **use**/**using** controls where `put` places jobs, and **watch**/**watching** controls where `reserve` takes jobs from. These are fully orthogonal.
@@ -257,6 +259,20 @@ jobs.each do |job|
   job.delete
 end
 ```
+
+By default `reserve_batch` is non-blocking — it returns whatever is ready
+immediately, possibly an empty array. Pass a timeout (in seconds) to long-poll
+instead: the call blocks until the first job arrives, then drains everything
+ready up to `count`, or returns an empty array when the timeout elapses. This
+avoids hot-looping a worker on empty polls.
+
+```ruby
+jobs = @beanstalk.tubes.reserve_batch(10, 30)  # block up to 30s for the first job
+```
+
+While blocked, a positive-timeout batch reserve may raise
+`Beaneater::DeadlineSoonError` if one of the connection's already-reserved jobs
+is about to hit its TTR — service that job, then reserve again.
 
 ### Stats
 

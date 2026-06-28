@@ -155,6 +155,19 @@ class Beaneater
       res[:id].to_i
     end
 
+    # Atomically deletes all buried jobs from the tube. Ready, delayed, and
+    # reserved jobs are left untouched. (Tuber only.)
+    #
+    # @return [Integer] Number of buried jobs flushed
+    # @example
+    #   @tube.flush_buried # => 3
+    #
+    # @api public
+    def flush_buried
+      res = transmit("flush-buried #{name}")
+      res[:id].to_i
+    end
+
     # Clears all unreserved jobs in all states from the tube
     #
     # @example

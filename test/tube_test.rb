@@ -267,4 +267,31 @@ describe Beaneater::Tube do
       assert_equal 0, count
     end
   end # flush
+
+  describe "for #flush_buried" do
+    before do
+      @tube = Beaneater::Tube.new(@beanstalk, 'flush_buried_test')
+      @beanstalk.tubes.watch! 'flush_buried_test'
+    end
+
+    after do
+      @tube.clear
+    end
+
+    it "should flush only buried jobs and return count" do
+      2.times { |i| @tube.put "buried job #{i}" }
+      2.times { @beanstalk.tubes.reserve.bury }
+      @tube.put "ready job"
+
+      count = @tube.flush_buried
+      assert_equal 2, count
+      assert_nil @tube.peek(:buried)
+      refute_nil @tube.peek(:ready)
+    end
+
+    it "should return 0 when there are no buried jobs" do
+      @tube.put "ready only"
+      assert_equal 0, @tube.flush_buried
+    end
+  end # flush_buried
 end # Beaneater::Tube

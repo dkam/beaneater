@@ -274,6 +274,33 @@ While blocked, a positive-timeout batch reserve may raise
 `Beaneater::DeadlineSoonError` if one of the connection's already-reserved jobs
 is about to hit its TTR — service that job, then reserve again.
 
+### Batch Touch (Tuber 0.12.0+)
+
+A batch reserve starts the TTR clock on every job at the same instant, but a
+worker processes them serially — so the tail of a large batch can expire and
+return to the queue while the worker is still busy. `touch_all` extends the TTR
+of every job the connection currently holds in a single command:
+
+```ruby
+jobs = @beanstalk.tubes.reserve_batch(10)
+
+jobs.each do |job|
+  process(job)
+  job.delete
+  @beanstalk.jobs.touch_all   # heartbeat whatever is still held
+end
+```
+
+No ids are sent: the server tracks the reserved set per connection, so jobs
+already deleted, released, buried or lost to a TTR timeout are simply absent.
+Each job keeps its own TTR — deadlines are extended individually, not levelled
+onto a common value.
+
+The return value is how many jobs the connection *actually* still holds. A count
+lower than expected means jobs hit their TTR and went back to the queue while the
+worker was busy — otherwise invisible, since nothing notifies a worker that it
+lost a job.
+
 ### Stats
 
 ```ruby

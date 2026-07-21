@@ -39,6 +39,48 @@ describe Beaneater::Jobs do
     end
   end # find
 
+  describe "for #touch_all" do
+    before do
+      @touch_tube = @beanstalk.tubes.find('touch_all_tube')
+      @beanstalk.tubes.watch! 'touch_all_tube'
+    end
+
+    after do
+      cleanup_tubes!(['touch_all_tube'], @beanstalk)
+    end
+
+    it "should return 0 when no jobs are held" do
+      assert_equal 0, @beanstalk.jobs.touch_all
+    end
+
+    it "should count every job held by the connection" do
+      3.times { |i| @touch_tube.put "touch all #{i}", :ttr => 5 }
+      jobs = @beanstalk.tubes.reserve_batch(3)
+      assert_equal 3, jobs.size
+      assert_equal 3, @beanstalk.jobs.touch_all
+      jobs.each(&:delete)
+    end
+
+    it "should exclude jobs the worker no longer holds" do
+      2.times { |i| @touch_tube.put "touch all drop #{i}", :ttr => 5 }
+      jobs = @beanstalk.tubes.reserve_batch(2)
+      jobs.first.delete
+      assert_equal 1, @beanstalk.jobs.touch_all
+      jobs.last.delete
+      assert_equal 0, @beanstalk.jobs.touch_all
+    end
+
+    it "should extend the ttr of held jobs" do
+      @touch_tube.put "touch all ttr", :ttr => 3
+      job = @beanstalk.tubes.reserve
+      sleep 2
+      assert_equal 1, @beanstalk.jobs.touch_all
+      sleep 2
+      assert_equal 'reserved', job.stats.state
+      job.delete
+    end
+  end # touch_all
+
   describe "for #register!" do
     before do
       $foo = 0

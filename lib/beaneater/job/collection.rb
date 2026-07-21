@@ -61,6 +61,26 @@ class Beaneater
     alias_method :peek, :find
     alias_method :[], :find
 
+    # Extends the ttr of every job currently reserved by this connection.
+    #
+    # A single heartbeat for a whole +reserve_batch+ window: the server already
+    # tracks the reserved set per connection, so no ids are sent and jobs that
+    # were already deleted, released, buried or lost to a ttr timeout are simply
+    # absent. Each job keeps its own ttr; deadlines are extended individually.
+    #
+    # The returned count is how many jobs the connection *actually* still holds.
+    # If it is lower than expected, jobs hit their ttr and went back to the queue
+    # while the worker was busy.
+    #
+    # @return [Integer] Number of held jobs whose deadline was extended
+    # @example
+    #   @beaneater.jobs.touch_all # => 10
+    #
+    # @api public
+    def touch_all
+      transmit("touch-all")[:id].to_i
+    end
+
     # Register a processor to handle beanstalkd job on particular tube.
     #
     # @param [String] tube_name Tube name
